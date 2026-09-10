@@ -1,0 +1,38 @@
+# Public allowlist for the initial project stage.
+# Coursework, management records, experiments and unreviewed files stay local.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/01_需求与设计/
+/01_需求与设计/*
+!/01_需求与设计/功能范围与验收草案.md
+!/01_需求与设计/原型/
+/01_需求与设计/原型/*
+!/01_需求与设计/原型/核心页面低保真原型.html
+
+# Credentials, dependencies and generated files must remain excluded.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/application-local.yml
+**/application-local.yaml
+**/application-local.properties
+**/credentials.json
+**/secrets.json
+**/node_modules/
+**/target/
+**/dist/
+**/coverage/
+**/uploads/
+**/.idea/
+**/.vscode/
+**/__pycache__/
+**/~$*
+*.log
+*.pyc
+.DS_Store
+Thumbs.db
