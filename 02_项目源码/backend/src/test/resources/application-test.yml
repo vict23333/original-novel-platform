@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:novel;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ''
+    driver-class-name: org.h2.Driver
+app:
+  # 仅供隔离内存数据库的自动化测试，开发环境不会读取此配置。
+  jwt-secret: dGVzdC1vbmx5LW5vdC1hLXByb2R1Y3Rpb24tc2VjcmV0LWtleQ==
+  admin-username: ''
+  admin-password: ''

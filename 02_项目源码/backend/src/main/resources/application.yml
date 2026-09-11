@@ -1,0 +1,27 @@
+server:
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  port: ${SERVER_PORT:8081}
+  error:
+    include-message: never
+    include-stacktrace: never
+spring:
+  application:
+    name: novel-platform
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:13406/novel_platform?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${DB_USERNAME:novel_app}
+    password: ${DB_PASSWORD}
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
+  flyway:
+    enabled: true
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+app:
+  jwt-secret: ${JWT_SECRET}
+  admin-username: ${ADMIN_USERNAME:}
+  admin-password: ${ADMIN_PASSWORD:}

@@ -1,4 +1,4 @@
-# Public allowlist for the initial project stage.
+# Public allowlist for reviewed project files.
 # Coursework, management records, experiments and unreviewed files stay local.
 /*
 !/.gitignore
@@ -10,6 +10,70 @@
 !/01_需求与设计/原型/
 /01_需求与设计/原型/*
 !/01_需求与设计/原型/核心页面低保真原型.html
+
+# Reviewed v0.1 source files; new files stay ignored until reviewed.
+!/02_项目源码/
+/02_项目源码/**
+!/02_项目源码/backend/
+!/02_项目源码/database/
+!/02_项目源码/docs/
+!/02_项目源码/frontend/
+!/02_项目源码/scripts/
+!/02_项目源码/backend/src/
+!/02_项目源码/frontend/src/
+!/02_项目源码/backend/src/main/
+!/02_项目源码/backend/src/test/
+!/02_项目源码/frontend/src/views/
+!/02_项目源码/backend/src/main/java/
+!/02_项目源码/backend/src/main/resources/
+!/02_项目源码/backend/src/test/java/
+!/02_项目源码/backend/src/test/resources/
+!/02_项目源码/backend/src/main/java/com/
+!/02_项目源码/backend/src/main/resources/db/
+!/02_项目源码/backend/src/test/java/com/
+!/02_项目源码/backend/src/main/java/com/novelplatform/
+!/02_项目源码/backend/src/main/resources/db/migration/
+!/02_项目源码/backend/src/test/java/com/novelplatform/
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/
+!/02_项目源码/backend/src/main/java/com/novelplatform/common/
+!/02_项目源码/backend/src/main/java/com/novelplatform/user/
+!/02_项目源码/README.md
+!/02_项目源码/backend/pom.xml
+!/02_项目源码/backend/src/main/java/com/novelplatform/NovelPlatformApplication.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/AdminBootstrap.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/AuthController.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/AuthRequests.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/AuthService.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/SecurityConfig.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/auth/TokenService.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/common/ApiError.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/common/ApiExceptionHandler.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/common/BusinessException.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/user/AppUser.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/user/UserMapper.java
+!/02_项目源码/backend/src/main/java/com/novelplatform/user/UserView.java
+!/02_项目源码/backend/src/main/resources/application.yml
+!/02_项目源码/backend/src/main/resources/db/migration/V1__create_users.sql
+!/02_项目源码/backend/src/test/java/com/novelplatform/AuthIntegrationTest.java
+!/02_项目源码/backend/src/test/resources/application-test.yml
+!/02_项目源码/database/README.md
+!/02_项目源码/docs/账号模块设计与接口.md
+!/02_项目源码/docs/验证记录_v0.1.md
+!/02_项目源码/frontend/index.html
+!/02_项目源码/frontend/package-lock.json
+!/02_项目源码/frontend/package.json
+!/02_项目源码/frontend/src/App.vue
+!/02_项目源码/frontend/src/main.js
+!/02_项目源码/frontend/src/router.js
+!/02_项目源码/frontend/src/session.js
+!/02_项目源码/frontend/src/style.css
+!/02_项目源码/frontend/src/views/AuthPage.vue
+!/02_项目源码/frontend/src/views/HomePage.vue
+!/02_项目源码/frontend/src/views/ProfilePage.vue
+!/02_项目源码/frontend/src/views/WorkspacePage.vue
+!/02_项目源码/frontend/vite.config.js
+!/02_项目源码/scripts/build.ps1
+!/02_项目源码/scripts/dev.ps1
 
 # Credentials, dependencies and generated files must remain excluded.
 **/.env
