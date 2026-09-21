@@ -50,6 +50,7 @@ if ($Action -eq 'Stop') {
     foreach ($name in @('frontend','backend','mysql')) {
         $process=Get-OwnedProcess $name
         if (-not $process) { Write-Output "$name not running as an owned process."; continue }
+        $stoppingProcess = Get-Process -Id $process.ProcessId
         if ($name -eq 'mysql') {
             Push-Location $projectRoot
             try {
@@ -57,11 +58,13 @@ if ($Action -eq 'Stop') {
                 if ($LASTEXITCODE -ne 0) { throw 'Graceful database shutdown failed; process was not killed.' }
             } finally { Pop-Location }
         } else { Stop-Process -Id $process.ProcessId }
+        # mysqladmin 接受关闭请求不代表 mysqld 已退出，等待完成后才能立即再次 Start。
+        if (-not $stoppingProcess.WaitForExit(30000)) { throw "$name is still shutting down; wait before starting again." }
         Write-Output "$name stopped."
     }
     return
 }
-if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'backend/target/novel-platform-0.1.0.jar'))) { throw 'Build the backend first: cd backend; mvn test package' }
+if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'backend/target/novel-platform-0.4.0.jar'))) { throw 'Build the backend first: cd backend; mvn test package' }
 if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'frontend/node_modules/vite/bin/vite.js'))) { throw 'Install frontend dependencies first: cd frontend; npm ci' }
 if (Test-Path -LiteralPath $settingsPath) {
     $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
@@ -113,7 +116,7 @@ GRANT SHUTDOWN ON *.* TO 'dev_admin'@'127.0.0.1';
     }
     $variables = @{ DB_PASSWORD=$settings.dbPassword; JWT_SECRET=$settings.jwtSecret; ADMIN_USERNAME=$settings.adminUsername; ADMIN_PASSWORD=$settings.adminPassword }
     foreach ($name in $variables.Keys) { $priorEnvironment[$name] = [Environment]::GetEnvironmentVariable($name,'Process'); [Environment]::SetEnvironmentVariable($name,$variables[$name],'Process') }
-    Start-OwnedProcess 'backend' 8081 (Get-Command java.exe).Source @('-Djdk.net.unixdomain.tmpdir=./.runtime/nonexistent-socket-dir', '-jar', 'backend/target/novel-platform-0.1.0.jar') $projectRoot
+    Start-OwnedProcess 'backend' 8081 (Get-Command java.exe).Source @('-Djdk.net.unixdomain.tmpdir=./.runtime/nonexistent-socket-dir', '-jar', 'backend/target/novel-platform-0.4.0.jar') $projectRoot
     Start-OwnedProcess 'frontend' 5173 $settings.nodeExe @('node_modules/vite/bin/vite.js','--host','127.0.0.1') (Join-Path $projectRoot 'frontend')
     Write-Output 'Open http://127.0.0.1:5173 ; register a reader or author account in the browser.'
     Write-Output 'Administrator credentials are stored only in .runtime/settings.local.json. Do not publish this file.'

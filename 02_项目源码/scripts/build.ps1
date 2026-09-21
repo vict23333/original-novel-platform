@@ -29,6 +29,8 @@ try {
     try {
         & $NodeExe $npmCli ci --no-fund
         if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+        & $NodeExe --test
+        if ($LASTEXITCODE -ne 0) { throw 'Frontend tests failed.' }
         & $NodeExe 'node_modules/vite/bin/vite.js' build
         if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed.' }
     } finally { Pop-Location }

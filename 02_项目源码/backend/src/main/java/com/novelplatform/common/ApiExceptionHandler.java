@@ -7,6 +7,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.dao.DuplicateKeyException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -27,6 +30,16 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiError> unreadable() {
         return ResponseEntity.badRequest().body(new ApiError("INVALID_INPUT", "请求字段或格式不正确"));
+    }
+
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    ResponseEntity<ApiError> invalidParameter() {
+        return ResponseEntity.badRequest().body(new ApiError("INVALID_INPUT", "请求参数缺失或格式不正确"));
+    }
+
+    @ExceptionHandler(DuplicateKeyException.class)
+    ResponseEntity<ApiError> duplicate() {
+        return ResponseEntity.status(409).body(new ApiError("CONTENT_CONFLICT", "记录或章节序号重复，请刷新后重试"));
     }
 
     @ExceptionHandler(Exception.class)

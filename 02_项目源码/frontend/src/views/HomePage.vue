@@ -1,10 +1,31 @@
 <script setup>
-import { session } from '../session'
+import BookCover from '../components/BookCover.vue'
+import { onMounted, ref } from 'vue'
+import { api, session } from '../session'
+import PageControls from '../components/PageControls.vue'
+const keyword = ref(''), categoryId = ref(''), categories = ref([]), busy = ref(false), error = ref('')
+const result = ref({ items: [], page: 1, size: 12, total: 0 })
+let requestId = 0
+async function load(page = 1) {
+  const current = ++requestId
+  busy.value = true; error.value = ''
+  try {
+    const query = new URLSearchParams({ keyword: keyword.value, page: String(page), size: '12' })
+    if (categoryId.value) query.set('categoryId', categoryId.value)
+    const data = await api(`/public/novels?${query}`, { publicRequest: true })
+    if (current === requestId) result.value = data
+  } catch (e) { if (current === requestId) { error.value = e.message; result.value.items = [] } }
+  finally { if (current === requestId) busy.value = false }
+}
+onMounted(async () => {
+  try { categories.value = await api('/public/categories', { publicRequest: true }) } catch (e) { error.value = e.message; return }
+  await load()
+})
 </script>
 <template>
   <section class="home-hero">
-    <div class="hero-copy"><p class="eyebrow">故事的下一页，等你开启</p><h1>在文字之间，<br>遇见新的世界。</h1><p class="hero-description">为热爱故事的读者，也为正在写下故事的你。<br>在墨间，开启属于自己的阅读与创作旅程。</p><div class="hero-actions"><router-link class="solid-link large" :to="session.user ? '/profile' : '/register'">{{ session.user ? '进入个人中心' : '创建我的账号' }} <span aria-hidden="true">↗</span></router-link><router-link v-if="!session.user" class="quiet-link" to="/login">已有账号，去登录 →</router-link></div><p class="release-note">首个开发版本已开放注册、登录和个人资料维护。</p></div>
+    <div class="hero-copy"><p class="eyebrow">故事的下一页，等你开启</p><h1>在文字之间，<br>遇见新的世界。</h1><p class="hero-description">为热爱故事的读者，也为正在写下故事的你。<br>在墨间，开启属于自己的阅读与创作旅程。</p><div class="hero-actions"><a class="solid-link large" href="#library">探索书库 ↓</a><router-link class="quiet-link" :to="session.user?.role === 'AUTHOR' ? '/author' : '/register'">开始我的创作 →</router-link></div><p class="release-note">作品与章节通过审核后，即可在这里与读者相遇。</p></div>
     <div class="book-scene" aria-hidden="true"><div class="scene-circle"></div><div class="book book-back"><span>故事<br>始于<br>一念</span></div><div class="book book-front"><span class="book-label">墨 间 · 创 作 手 记</span><strong>每一个故事<br>都有自己的<br>回响。</strong><div class="book-rule"></div><small>写下第一行，让想象生长。</small></div><span class="scene-caption">A PLACE FOR YOUR STORIES</span></div>
   </section>
-  <section class="feature-section"><div class="section-heading"><div><p class="eyebrow">从一个账号开始</p><h2>选择你的故事身份</h2></div><span class="outline-label">当前可体验</span></div><div class="feature-grid"><article><span class="feature-number">01 / 读者</span><h3>建立你的阅读身份</h3><p>注册读者账号，维护昵称和个人简介。阅读、书架与评论将在后续版本开放。</p></article><article><span class="feature-number">02 / 作者</span><h3>准备你的创作名片</h3><p>作者同时拥有读者能力，可进入作者工作台。作品发布与 AI 辅助创作正在规划中。</p></article><article><span class="feature-number">03 / 平台管理</span><h3>让内容有序生长</h3><p>管理账号由平台单独初始化。审核、用户管理及分类维护将在后续版本实现。</p></article></div></section>
+  <section id="library" class="feature-section"><div class="section-heading"><div><p class="eyebrow">发现下一本好故事</p><h2>原创书库</h2></div><span class="outline-label">已审核作品</span></div><form class="library-search" @submit.prevent="load(1)"><div><label for="book-search">关键词</label><el-input id="book-search" v-model="keyword" :maxlength="100" placeholder="搜索书名或作者昵称" /></div><div><label for="book-category">题材</label><select id="book-category" v-model="categoryId"><option value="">全部题材</option><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option></select></div><el-button type="primary" native-type="submit" :loading="busy">搜索作品</el-button></form><el-alert v-if="error" :title="error" type="error" :closable="false" class="form-alert" /><div class="library-grid" v-loading="busy"><router-link v-for="book in result.items" :key="book.id" class="library-book" :to="`/books/${book.id}`"><BookCover :title="book.title" :category-id="book.categoryId" /><div><span class="book-category">{{ book.categoryName }} · {{ book.serialStatus === 'COMPLETED' ? '完结' : '连载' }}</span><h3>{{ book.title }}</h3><p class="muted">{{ book.authorName }} 著</p><p class="book-blurb">{{ book.introduction }}</p></div></router-link></div><div v-if="!busy && !error && !result.items.length" class="empty-state"><h3>{{ keyword || categoryId ? '没有找到匹配作品' : '书库正在等待新的故事' }}</h3><p>{{ keyword || categoryId ? '试试其他关键词或题材。' : '作者提交作品与章节，管理员审核通过后，读者即可开始阅读。' }}</p></div><PageControls v-bind="result" :busy="busy" @change="load" /></section>
 </template>

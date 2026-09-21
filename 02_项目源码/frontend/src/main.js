@@ -8,6 +8,7 @@ import 'element-plus/es/components/radio-button/style/css'
 import 'element-plus/es/components/loading/style/css'
 import 'element-plus/es/components/message/style/css'
 import './style.css'
+import './content.css'
 import App from './App.vue'
 import router from './router'
 

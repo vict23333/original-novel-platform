@@ -23,8 +23,8 @@ public class AuthController {
     @PostMapping("/auth/logout") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(Authentication auth) { service.logout(id(auth)); }
     @GetMapping("/author/workspace")
-    public Map<String, String> author() { return Map.of("role", "AUTHOR", "message", "作者身份验证通过，作品与章节功能将在后续迭代实现。"); }
+    public Map<String, String> author() { return Map.of("role", "AUTHOR", "message", "作者身份验证通过，可以管理本人作品与章节。"); }
     @GetMapping("/admin/workspace")
-    public Map<String, String> admin() { return Map.of("role", "ADMIN", "message", "管理员身份验证通过，审核与管理功能将在后续迭代实现。"); }
+    public Map<String, String> admin() { return Map.of("role", "ADMIN", "message", "管理员身份验证通过，可以审核作品、章节和处理下架。"); }
     private long id(Authentication auth) { return Long.parseLong(auth.getName()); }
 }
