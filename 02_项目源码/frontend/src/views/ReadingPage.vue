@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { api, session } from '../session'
+import { guestIdentity } from '../discovery'
 import CommentSection from '../components/CommentSection.vue'
 import BookReadingActions from '../components/BookReadingActions.vue'
 const route = useRoute(), chapter = ref(null), busy = ref(false), error = ref('')
@@ -95,6 +96,9 @@ async function load() {
     await new Promise(resolve => requestAnimationFrame(resolve))
     if (generation !== requestId) return
     ready = true
+    // 正文完成展示才记数；浏览器存储、身份生成或统计接口失败均不阻断阅读。
+    try { void api(`/public/chapters/${data.id}/read-event`, { method: 'POST', body: session.user ? {} : { anonymousId: guestIdentity() } }).catch(() => {}) }
+    catch { /* 阅读本身仍然可用。 */ }
     status.value = session.user ? (restore ? state.message : '已打开章节，即将保存进度') : '游客阅读不会保存账号进度'
     schedule()
   } catch (e) { if (generation === requestId) error.value = e.message }

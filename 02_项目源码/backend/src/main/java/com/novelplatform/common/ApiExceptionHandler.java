@@ -42,6 +42,11 @@ public class ApiExceptionHandler {
         return ResponseEntity.status(409).body(new ApiError("CONTENT_CONFLICT", "记录或章节序号重复，请刷新后重试"));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> referenced() {
+        return ResponseEntity.status(409).body(new ApiError("REFERENCE_CONFLICT", "记录正在被使用或关联内容已变化，请刷新后重试"));
+    }
+
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> unexpected(Exception e) {
         // 不记录请求正文或异常消息，避免凭据和数据库连接信息进入日志。

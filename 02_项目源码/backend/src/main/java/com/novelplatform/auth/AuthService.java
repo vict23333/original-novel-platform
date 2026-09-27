@@ -53,6 +53,7 @@ public class AuthService {
         // 更新目标仅来自已验签令牌，客户端无法提交 id、role 或 enabled。
         users.update(null, Wrappers.<AppUser>lambdaUpdate().eq(AppUser::getId, id)
                 .set(AppUser::getNickname, input.nickname().strip()).set(AppUser::getBio, input.bio().strip())
+                .setSql("admin_version = admin_version + 1")
                 .set(AppUser::getUpdatedAt, LocalDateTime.now(ZoneOffset.UTC)));
         return current(id);
     }

@@ -11,13 +11,15 @@ import static com.novelplatform.content.ContentViews.*;
 @RequestMapping("/api")
 public class ContentController {
     private final ContentService service;
-    public ContentController(ContentService service) { this.service=service; }
+    private final com.novelplatform.discovery.DiscoveryService discovery;
+    public ContentController(ContentService service,com.novelplatform.discovery.DiscoveryService discovery) { this.service=service;this.discovery=discovery; }
     private long user(Authentication a) { return Long.parseLong(a.getName()); }
 
     @GetMapping("/public/categories") public List<Category> categories() { return service.categories(); }
-    @GetMapping("/public/novels") public Page<Book> books(@RequestParam(defaultValue="") String keyword,
-            @RequestParam(required=false) Long categoryId,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="12") int size) {
-        return service.publicBooks(keyword,categoryId,page,size);
+    @GetMapping("/public/novels") public Page<com.novelplatform.discovery.DiscoveryViews.Book> books(@RequestParam(defaultValue="") String keyword,
+            @RequestParam(required=false) Long categoryId,@RequestParam(required=false) String serialStatus,
+            @RequestParam(defaultValue="NEWEST") String sort,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="12") int size) {
+        return discovery.search(keyword,categoryId,serialStatus,sort,page,size,false);
     }
     @GetMapping("/public/novels/{id}") public Book book(@PathVariable long id) { return service.publicBook(id); }
     @GetMapping("/public/novels/{id}/chapters") public Page<ChapterSummary> directory(@PathVariable long id,
@@ -35,6 +37,8 @@ public class ContentController {
             @RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="20") int size) { return service.authorChapters(user(a),id,page,size); }
     @PostMapping("/author/novels/{id}/chapters") @ResponseStatus(HttpStatus.CREATED)
     public Chapter createChapter(Authentication a,@PathVariable long id,@Valid @RequestBody ContentRequests.ChapterInput input) { return service.createChapter(user(a),id,input); }
+    @GetMapping("/author/novels/{id}/next-chapter-number")
+    public java.util.Map<String,Integer> nextChapterNumber(Authentication a,@PathVariable long id) { return service.nextChapterNumber(user(a),id); }
     @GetMapping("/author/chapters/{id}") public Chapter chapter(Authentication a,@PathVariable long id) { return service.authorChapter(user(a),id); }
     @PutMapping("/author/chapters/{id}") public Chapter updateChapter(Authentication a,@PathVariable long id,@Valid @RequestBody ContentRequests.ChapterInput input) { return service.updateChapter(user(a),id,input); }
     @PostMapping("/author/chapters/{id}/submit") public Chapter submitChapter(Authentication a,@PathVariable long id,@Valid @RequestBody ContentRequests.Version v) { return service.submitChapter(user(a),id,v.version()); }

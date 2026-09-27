@@ -3,6 +3,21 @@ import assert from 'node:assert/strict'
 import { authLocation, contextualDestination, loginDestination } from '../src/navigation.js'
 
 const reader = { role: 'READER' }, author = { role: 'AUTHOR' }, admin = { role: 'ADMIN' }
+test('榜单与作者数据页登录保留来源，拒绝额外跳转参数', () => {
+  assert.equal(loginDestination(reader, '/rankings?kind=NEWEST'), '/rankings?kind=NEWEST')
+  assert.equal(loginDestination(author, '/author/novels/12/stats'), '/author/novels/12/stats')
+  assert.equal(loginDestination(reader, '/author/novels/12/stats'), '/')
+  assert.equal(loginDestination(reader, '/rankings?kind=NEWEST&next=//example.com'), '/')
+})
+
+test('新后台页面在登录后保留来源，普通账号不能跳入后台', () => {
+  for (const target of ['/admin/users', '/admin/taxonomy', '/admin/audits']) {
+    assert.equal(authLocation('/login', target).query.next, target)
+    assert.equal(loginDestination(admin, target), target)
+    assert.equal(loginDestination(reader, target), '/')
+    assert.equal(loginDestination(author, target), '/author')
+  }
+})
 
 test('直接登录按身份进入日常使用页面', () => {
   assert.equal(loginDestination(reader), '/')

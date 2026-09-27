@@ -25,3 +25,11 @@ app:
   jwt-secret: ${JWT_SECRET}
   admin-username: ${ADMIN_USERNAME:}
   admin-password: ${ADMIN_PASSWORD:}
+  ai:
+    enabled: ${AI_ENABLED:false}
+    api-url: ${AI_API_URL:}
+    api-key: ${AI_API_KEY:}
+    model: ${AI_MODEL:}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:45}
+    cooldown-seconds: 20
+    allow-local-http: false

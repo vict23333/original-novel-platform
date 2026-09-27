@@ -66,6 +66,21 @@ class ContentIntegrationTest {
         assertThat(call("GET","/api/public/chapters/"+id(c),null,null,200).get("content").asText()).isEqualTo("初版正文");
         assertThat(call("GET","/api/public/novels/"+id(n)+"/chapters",null,null,200).get("total").asInt()).isEqualTo(1);
     }
+    @Test void nextChapterNumberUsesMaximumAndExcludesDeletedChapters() throws Exception {
+        var n=book();String endpoint="/api/author/novels/"+id(n)+"/next-chapter-number";
+        assertThat(call("GET",endpoint,author,null,200).get("chapterNumber").asInt()).isEqualTo(1);
+        chapter(n);
+        var c=call("POST","/api/author/novels/"+id(n)+"/chapters",author,chapterInput("跳号章节",9,0),201);
+        assertThat(call("GET",endpoint,author,null,200).get("chapterNumber").asInt()).isEqualTo(10);
+        call("DELETE","/api/author/chapters/"+id(c)+"?version="+v(c),author,null,204);
+        assertThat(call("GET",endpoint,author,null,200).get("chapterNumber").asInt()).isEqualTo(2);
+    }
+    @Test void chapterSuggestionChecksOwnerRoleAndUpperLimit() throws Exception {
+        var n=book();String endpoint="/api/author/novels/"+id(n)+"/next-chapter-number";
+        call("GET",endpoint,other,null,404);call("GET",endpoint,reader,null,403);call("GET",endpoint,null,null,401);
+        call("POST","/api/author/novels/"+id(n)+"/chapters",author,chapterInput("末章",100000,0),201);
+        call("GET",endpoint,author,null,409);
+    }
     @Test void novelApprovalDoesNotApproveChapter() throws Exception {
         var n=publishBook(book());var c=submit("chapters",chapter(n));
         call("GET","/api/public/chapters/"+id(c),null,null,404);

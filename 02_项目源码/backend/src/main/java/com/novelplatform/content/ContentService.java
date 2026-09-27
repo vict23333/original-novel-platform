@@ -102,6 +102,12 @@ public class ContentService {
         return new Page<>(items,page,size,total);
     }
     public Chapter authorChapter(long owner,long id) { Chapter c=chapter(id);authorNovel(owner,c.getNovelId());return c; }
+    public java.util.Map<String,Integer> nextChapterNumber(long owner,long novelId) {
+        authorNovel(owner,novelId);
+        int maximum=chapters.maximumNumber(novelId);
+        if(maximum>=100000) throw conflict("章节序号已到上限，请在目录检查并手动选择可用序号");
+        return java.util.Map.of("chapterNumber",maximum+1);
+    }
     private void availableNumber(long novelId,int number,Long except) {
         if(chapters.selectCount(Wrappers.<Chapter>lambdaQuery().eq(Chapter::getNovelId,novelId).eq(Chapter::getChapterNumber,number)
                 .eq(Chapter::getDeleted,false).ne(except!=null,Chapter::getId,except))>0) throw conflict("章节序号已被使用，请选择其他序号");
