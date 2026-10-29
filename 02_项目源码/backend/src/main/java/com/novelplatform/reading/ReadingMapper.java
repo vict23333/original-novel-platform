@@ -15,10 +15,11 @@ public interface ReadingMapper {
     Long lockUser(long userId);
     @Select("SELECT COUNT(*) FROM bookshelf WHERE user_id=#{userId} AND novel_id=#{novelId}")
     long contains(@Param("userId") long userId, @Param("novelId") long novelId);
-    @Select("SELECT COUNT(*) FROM bookshelf WHERE user_id=#{userId}")
-    long count(long userId);
-    @Select("SELECT novel_id,added_at FROM bookshelf WHERE user_id=#{userId} ORDER BY added_at DESC,novel_id DESC LIMIT #{size} OFFSET #{offset}")
-    List<ShelfRow> shelf(@Param("userId") long userId, @Param("size") int size, @Param("offset") long offset);
+    String SHELF_FILTER = " FROM bookshelf b JOIN novel n ON n.id=b.novel_id LEFT JOIN reading_progress p ON p.user_id=b.user_id AND p.novel_id=b.novel_id WHERE b.user_id=#{userId} AND LOCATE(#{keyword},n.public_title)>0 AND (#{status}='ALL' OR (#{status}='READ' AND p.novel_id IS NOT NULL) OR (#{status}='UNREAD' AND p.novel_id IS NULL))";
+    @Select("SELECT COUNT(*)" + SHELF_FILTER)
+    long count(long userId,String keyword,String status);
+    @Select("SELECT b.novel_id,b.added_at" + SHELF_FILTER + " ORDER BY CASE WHEN #{sort}='RECENT_READ' THEN p.updated_at END DESC,b.added_at DESC,b.novel_id DESC LIMIT #{size} OFFSET #{offset}")
+    List<ShelfRow> shelf(long userId,String keyword,String status,String sort,int size,long offset);
     @Insert("INSERT INTO bookshelf(user_id,novel_id) VALUES(#{userId},#{novelId})")
     void add(@Param("userId") long userId, @Param("novelId") long novelId);
     @Delete("DELETE FROM bookshelf WHERE user_id=#{userId} AND novel_id=#{novelId}")

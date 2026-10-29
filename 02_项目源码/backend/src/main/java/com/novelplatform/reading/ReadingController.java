@@ -15,8 +15,10 @@ public class ReadingController {
 
     @GetMapping("/bookshelf")
     public ContentViews.Page<ReadingService.ShelfItem> shelf(Authentication auth,
-            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="12") int size) {
-        return service.shelf(user(auth),page,size);
+            @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="12") int size,
+            @RequestParam(defaultValue="") String keyword,@RequestParam(defaultValue="ALL") String status,
+            @RequestParam(defaultValue="ADDED") String sort) {
+        return service.shelf(user(auth),page,size,keyword,status,sort);
     }
     @PutMapping("/bookshelf/{novelId}")
     public ReadingService.State add(Authentication auth, @PathVariable long novelId) {

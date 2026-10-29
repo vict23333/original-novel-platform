@@ -49,6 +49,17 @@ class AiGatewayTest {
         assertThat(requestBody).doesNotContain("test-only-provider-key");
     }
     @Test void lengthFinishIsExplicitlyMarked() { body=body.replace("stop","length");assertThat(generate(5).truncated()).isTrue(); }
+    @Test void contextualDraftUsesStructuredMaterialsAndTaskInstructions() throws Exception {
+        var gateway=new AiGateway(settings(5),json);
+        try {gateway.generateContext("DRAFT","{\"task\":\"DRAFT\",\"goal\":\"寻找入口\",\"sources\":[{\"text\":\"前章结尾\"}]}");}
+        finally {gateway.close();}
+        var request=json.readTree(requestBody);
+        assertThat(request.at("/messages/0/content").asText()).contains("当前章为空","不把总纲的后期事件提前");
+        var data=json.readTree(request.at("/messages/1/content").asText());
+        assertThat(data.at("/context/goal").asText()).isEqualTo("寻找入口");
+        assertThat(data.at("/context/sources/0/text").asText()).isEqualTo("前章结尾");
+        assertThat(requestBody).doesNotContain("test-only-provider-key");
+    }
     @Test void providerErrorsDoNotLeakBodyAndRedirectsAreNotFollowed() {
         status=302;body="private-provider-error-test-only-provider-key";
         assertThatThrownBy(() -> generate(5)).isInstanceOfSatisfying(BusinessException.class,e -> {

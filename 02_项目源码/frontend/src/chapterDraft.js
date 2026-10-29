@@ -6,7 +6,8 @@ export function draftKey(userId, scope) {
 }
 export function draftForm(value) {
   if (!value || typeof value.title !== 'string' || value.title.length > 100 || typeof value.content !== 'string' || value.content.length > 20000 || !['string', 'number'].includes(typeof value.chapterNumber)) throw new Error('本地草稿格式不正确')
-  return { chapterNumber: value.chapterNumber, title: value.title, content: value.content }
+  if(value.goal!==undefined && (typeof value.goal!=='string'||value.goal.length>2000))throw new Error('本地章目标格式不正确')
+  return { chapterNumber: value.chapterNumber, title: value.title, content: value.content, ...(value.goal!==undefined?{goal:value.goal}:{}) }
 }
 export function parseDraft(raw, now = Date.now()) {
   if (!raw) return null

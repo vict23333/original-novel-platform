@@ -18,7 +18,7 @@ watch(() => cover.value[0], () => { failed.value = false })
 
 <template>
   <div class="novel-cover" :class="[{ 'cover-large': large }, `cover-${cover[0]}`]" aria-hidden="true">
-    <img v-if="!failed" :src="`/covers/${cover[0]}.jpg`" alt="" loading="lazy" decoding="async" :style="{ objectPosition: position }" @error="failed = true" />
+    <img v-if="!failed" :src="`/covers/${cover[0]}.jpg`" alt="" width="160" height="240" loading="lazy" decoding="async" :style="{ objectPosition: position }" @error="failed = true" />
     <div class="cover-shade"></div>
     <span class="cover-imprint">墨间 · {{ cover[1] }}</span>
     <strong>{{ title }}</strong>

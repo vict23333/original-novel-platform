@@ -3,6 +3,12 @@ import assert from 'node:assert/strict'
 import { authLocation, contextualDestination, loginDestination } from '../src/navigation.js'
 
 const reader = { role: 'READER' }, author = { role: 'AUTHOR' }, admin = { role: 'ADMIN' }
+test('独立书库、阅读设置和作者数据概览保留安全登录来源', () => {
+  for (const target of ['/library', '/library?keyword=%E9%9B%A8&sort=UPDATED&page=2', '/settings']) assert.equal(loginDestination(reader, target), target)
+  assert.equal(loginDestination(author, '/author?view=stats'), '/author?view=stats')
+  assert.equal(loginDestination(reader, '/author?view=stats'), '/')
+  for (const target of ['/library?next=//bad.example', '/library?keyword=x&keyword=y', '/library?keyword=%0d%0a']) assert.equal(loginDestination(author, target), '/author')
+})
 test('榜单与作者数据页登录保留来源，拒绝额外跳转参数', () => {
   assert.equal(loginDestination(reader, '/rankings?kind=NEWEST'), '/rankings?kind=NEWEST')
   assert.equal(loginDestination(author, '/author/novels/12/stats'), '/author/novels/12/stats')

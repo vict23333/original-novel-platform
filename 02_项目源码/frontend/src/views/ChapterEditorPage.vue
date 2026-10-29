@@ -9,7 +9,7 @@ import ContentState from '../components/ContentState.vue'
 import AiAssistant from '../components/AiAssistant.vue'
 const route = useRoute(), router = useRouter()
 const chapter = ref(null), book = ref(null), loading = ref(true), busy = ref(false), error = ref(''), baseline = ref('')
-const form = reactive({ chapterNumber: 1, title: '', content: '' })
+const form = reactive({ chapterNumber: 1, title: '', content: '', goal: '' })
 const aiBusy = ref(false), aiDirty = ref(false), contentInput = ref(null)
 const draft = useChapterDraft(), editorForm = ref(null), focusMode = ref(false)
 const recovered = ref(false), removed = ref(false)
@@ -23,7 +23,7 @@ function readSelection() {
 const isNew = computed(() => !route.params.id), pending = computed(() => chapter.value?.reviewStatus === 'PENDING')
 const dirty = computed(() => !loading.value && JSON.stringify(form) !== baseline.value)
 useUnsavedChanges(computed(() => !removed.value && (dirty.value || aiDirty.value || aiBusy.value)), busy)
-function accept(data) { chapter.value = data; Object.assign(form, { chapterNumber: data.chapterNumber, title: data.title, content: data.content }); baseline.value = JSON.stringify(form) }
+function accept(data) { chapter.value = data; Object.assign(form, { chapterNumber: data.chapterNumber, title: data.title, content: data.content, goal: data.goal??form.goal??'' }); baseline.value = JSON.stringify(form) }
 let loadId = 0
 async function load() {
   const current = ++loadId, target = route.params.id, novelId = route.params.novelId
@@ -36,7 +36,7 @@ async function load() {
       try { number = (await api(`/author/novels/${novelId}/next-chapter-number`)).chapterNumber }
       catch (e) { if (current === loadId) error.value = e.message }
       if (current !== loadId) return
-      book.value = data; Object.assign(form, { chapterNumber: number, title: '', content: '' }); baseline.value = JSON.stringify(form)
+      book.value = data; Object.assign(form, { chapterNumber: number, title: '', content: '', goal: '' }); baseline.value = JSON.stringify(form)
     } else {
       const data = await api(`/author/chapters/${target}`), parent = await api(`/author/novels/${data.novelId}`)
       if (current !== loadId) return
@@ -93,9 +93,27 @@ onBeforeRouteUpdate(() => { cacheNow() })
 onBeforeUnmount(() => { cacheNow(); ++loadId; clearTimeout(cacheTimer); window.removeEventListener('keydown', shortcut); window.removeEventListener('pagehide', cacheNow); document.removeEventListener('visibilitychange', pageHidden) })
 watch(() => route.fullPath, load, { immediate: true })
 </script>
-<template><section class="page-wrap writing-page" :class="{ 'writing-focus': focusMode }"><router-link class="quiet-link" :to="book ? `/author/novels/${book.id}` : '/author'">← 返回作品管理</router-link><div class="editor-heading"><div><p v-if="book" class="eyebrow">{{ book.title }}</p><h1 class="page-title">{{ isNew ? '新建章节' : '章节编辑' }}</h1></div><div v-if="chapter" class="state-line"><ContentState :item="chapter" /></div></div><el-alert v-if="error" :title="error" type="error" :closable="false" class="form-alert" /><el-button v-if="error && !dirty" :disabled="editorBusy" @click="load">重新加载</el-button><div v-if="book && !loading" class="editor-card">
-  <div v-if="hasRecovery" class="draft-recovery" role="status"><strong>发现尚未保存到服务器的本地草稿</strong><p>备份时间：{{ new Date(draft.recovery.value.savedAt).toLocaleString() }}。请选择恢复、导出或清除，再继续编辑。</p><p v-if="pending">本章正在审核，可以导出备份，审核结束后再恢复。</p><div class="editor-actions"><el-button :disabled="pending || editorBusy" @click="restore">恢复本地草稿</el-button><el-button @click="draft.download(draft.recovery.value.form)">导出本地备份</el-button><el-button :disabled="editorBusy" @click="discardRecovery">清除本地备份</el-button></div></div>
-  <div class="writing-tools"><span>{{ characters }} 字符（不含空白）</span><div><el-button :disabled="loading" @click="draft.download(form)">导出正文 TXT</el-button><el-button @click="focusMode = !focusMode">{{ focusMode ? '退出专注模式' : '专注写作' }}</el-button></div></div>
-  <p v-if="draft.warning.value" class="draft-warning" role="alert">{{ draft.warning.value }}</p>
-  <p v-else-if="draft.savedAt.value" class="draft-status" role="status">本地备份已更新 {{ new Date(draft.savedAt.value).toLocaleTimeString() }} · 尚未保存到服务器</p>
-  <p v-if="recovered" class="draft-status">本地内容已恢复，请核对后保存到服务器。</p><form ref="editorForm" @submit.prevent="save"><div class="chapter-fields"><div><label for="chapter-number">章节序号</label><input id="chapter-number" v-model="form.chapterNumber" class="native-input" type="number" min="1" max="100000" required :disabled="editorBusy || pending || hasRecovery" /></div><div><label for="chapter-title">章节标题</label><el-input id="chapter-title" v-model="form.title" :maxlength="100" required :disabled="editorBusy || pending || hasRecovery" placeholder="这一章的故事，从这里开始" /></div></div><p v-if="isNew" class="field-hint">已根据现有章节建议序号，可自行调整；保存时会再次检查是否重复。</p><label for="chapter-content">章节正文</label><el-input id="chapter-content" ref="contentInput" v-model="form.content" type="textarea" :rows="20" :maxlength="20000" show-word-limit :disabled="editorBusy || pending || hasRecovery" placeholder="写下你的正文。空白内容可以暂存，但不能提交审核。" /><p v-if="chapter?.reviewReason" class="review-reason">最近审核反馈：{{ chapter.reviewReason }}</p><div class="editor-actions"><el-button type="primary" native-type="submit" :loading="busy" :disabled="pending || aiBusy || hasRecovery">保存草稿</el-button><el-button v-if="chapter" :disabled="editorBusy || hasRecovery || dirty || pending || chapter.reviewStatus === 'APPROVED'" @click="submit">提交审核</el-button><el-button v-if="chapter" type="danger" plain :disabled="editorBusy || pending || hasRecovery" @click="remove">删除章节</el-button><span role="status" class="muted">{{ dirty ? '有未保存修改' : pending ? '等待审核，暂不可编辑' : isNew ? '填写内容后保存草稿' : '当前内容已保存' }}</span></div></form><AiAssistant v-if="chapter" :key="chapter.id" :chapter="chapter" :content="form.content" :disabled="busy || pending || hasRecovery" :selection-reader="readSelection" @apply="form.content = $event" @busy="aiBusy = $event" @dirty="aiDirty = $event" /><p v-else class="muted">先保存章节草稿，即可使用 AI 续写与润色。</p><p class="scope-note">Ctrl / ⌘ + S 保存到服务器。本地备份仅保留在当前浏览器，按账号和章节区分，有效期七天；公共电脑使用后请清除备份。AI 未采用的预览不在备份中。</p></div></section></template>
+<template>
+  <section class="page-wrap writing-page" :class="{ 'writing-focus': focusMode }">
+    <header class="writer-toolbar"><div class="writer-location"><router-link class="quiet-link" :to="book ? `/author/novels/${book.id}` : '/author'">返回作品</router-link><span v-if="book" class="writer-book-title">{{ book.title }}</span><ContentState v-if="chapter" :item="chapter" /></div>
+      <div class="writer-primary-actions"><button class="text-button" :aria-pressed="focusMode" @click="focusMode = !focusMode">{{ focusMode ? '退出专注模式' : '专注写作' }}</button><el-button v-if="chapter" :disabled="editorBusy || hasRecovery || dirty || pending || !form.content.trim() || chapter.reviewStatus === 'APPROVED'" @click="submit">提交审核</el-button><el-button type="primary" :loading="busy" :disabled="loading || !book || pending || aiBusy || hasRecovery" @click="save">保存草稿</el-button></div>
+    </header>
+    <div class="writer-title-row"><div><h1 class="page-title">{{ isNew ? '新建章节' : '章节编辑' }}</h1><p class="writer-status" role="status">{{ characters }} 字 · {{ dirty ? '有未保存修改' : pending ? '等待审核，暂不可编辑' : isNew ? '填写后保存，即可使用 AI' : '已保存到服务器' }}</p></div>
+      <details class="editor-more"><summary>更多操作</summary><div><button :disabled="loading || !book" @click="draft.download(form)">导出正文 TXT</button><button v-if="chapter" class="danger-text" :disabled="editorBusy || pending || hasRecovery" @click="remove">删除章节</button></div></details>
+    </div>
+    <el-alert v-if="error" :title="error" type="error" :closable="false" class="form-alert" /><el-button v-if="error && !dirty" :disabled="editorBusy" @click="load">重新加载</el-button>
+    <div v-if="book && !loading" class="writing-layout">
+      <div class="editor-card manuscript-editor">
+        <div v-if="hasRecovery" class="draft-recovery" role="status"><strong>发现未保存的本地草稿</strong><p>备份于 {{ new Date(draft.recovery.value.savedAt).toLocaleString() }}。请选择恢复或清除，再继续编辑。</p><p v-if="pending">本章正在审核，可以先导出备份。</p><div class="editor-actions"><el-button :disabled="pending || editorBusy" @click="restore">恢复本地草稿</el-button><el-button @click="draft.download(draft.recovery.value.form)">导出本地备份</el-button><el-button :disabled="editorBusy" @click="discardRecovery">清除本地备份</el-button></div></div>
+        <p v-if="draft.warning.value" class="draft-warning" role="alert">{{ draft.warning.value }}</p><p v-if="recovered" class="draft-status">已恢复到编辑区，请核对后保存。</p>
+        <form ref="editorForm" @submit.prevent="save"><div class="chapter-fields"><div><label for="chapter-number">章节序号</label><input id="chapter-number" v-model="form.chapterNumber" name="chapterNumber" class="native-input" type="number" min="1" max="100000" required :disabled="editorBusy || pending || hasRecovery" /></div><div><label for="chapter-title">章节标题</label><el-input id="chapter-title" v-model="form.title" name="title" autocomplete="off" :maxlength="100" required :disabled="editorBusy || pending || hasRecovery" placeholder="输入章节标题…" /></div></div>
+          <label for="chapter-goal">本章目标与情节安排</label><el-input id="chapter-goal" v-model="form.goal" type="textarea" :rows="3" :maxlength="2000" show-word-limit :disabled="editorBusy || pending || hasRecovery" placeholder="这章要发生什么？主角想做什么、遇到什么冲突，结尾停在哪里？目标会与章节草稿一起保存。" />
+          <p v-if="!form.content.trim()" class="muted">空白正文可保存草稿，填写或采用候选后才能提交审核。</p><label for="chapter-content">章节正文</label><el-input id="chapter-content" ref="contentInput" v-model="form.content" name="content" type="textarea" :rows="23" :maxlength="20000" show-word-limit :disabled="editorBusy || pending || hasRecovery" placeholder="自己开始写，或填写本章目标后让右侧 AI 起草候选…" />
+          <p v-if="chapter?.reviewReason" class="review-reason">审核反馈：{{ chapter.reviewReason }}</p>
+          <div class="writer-bottom-status"><span>Ctrl / ⌘ + S 保存草稿</span><span v-if="draft.savedAt.value && dirty">本地备份 {{ new Date(draft.savedAt.value).toLocaleTimeString() }}</span></div>
+        </form>
+      </div>
+      <aside v-show="!focusMode" class="writing-assistant" aria-label="AI 写作面板"><AiAssistant :key="chapter?.id||`new-${book.id}`" :novel-id="book.id" :chapter="chapter" :chapter-number="Number(form.chapterNumber)" :goal="form.goal" :content="form.content" :disabled="busy || pending || hasRecovery" :selection-reader="readSelection" @apply="form.content = $event" @busy="aiBusy = $event" @dirty="aiDirty = $event" /></aside>
+    </div>
+  </section>
+</template>

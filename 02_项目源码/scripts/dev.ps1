@@ -64,7 +64,7 @@ if ($Action -eq 'Stop') {
     }
     return
 }
-if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'backend/target/novel-platform-0.9.0.jar'))) { throw 'Build the backend first: cd backend; mvn test package' }
+if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'backend/target/novel-platform-0.13.0.jar'))) { throw 'Build the backend first: cd backend; mvn test package' }
 if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'frontend/node_modules/vite/bin/vite.js'))) { throw 'Install frontend dependencies first: cd frontend; npm ci' }
 if (Test-Path -LiteralPath $settingsPath) {
     $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
@@ -128,7 +128,7 @@ GRANT SHUTDOWN ON *.* TO 'dev_admin'@'127.0.0.1';
     }
     foreach ($name in $aiNames.Keys) { $priorEnvironment[$name] = [Environment]::GetEnvironmentVariable($name,'Process') }
     foreach ($name in $variables.Keys) { $priorEnvironment[$name] = [Environment]::GetEnvironmentVariable($name,'Process'); [Environment]::SetEnvironmentVariable($name,$variables[$name],'Process') }
-    Start-OwnedProcess 'backend' 8081 (Get-Command java.exe).Source @('-Djdk.net.unixdomain.tmpdir=./.runtime/nonexistent-socket-dir', '-jar', 'backend/target/novel-platform-0.9.0.jar') $projectRoot
+    Start-OwnedProcess 'backend' 8081 (Get-Command java.exe).Source @('-Djdk.net.unixdomain.tmpdir=./.runtime/nonexistent-socket-dir', '-jar', 'backend/target/novel-platform-0.13.0.jar') $projectRoot
     foreach ($name in $aiNames.Keys) { [Environment]::SetEnvironmentVariable($name,$null,'Process') }
     Start-OwnedProcess 'frontend' 5173 $settings.nodeExe @('node_modules/vite/bin/vite.js','--host','127.0.0.1') (Join-Path $projectRoot 'frontend')
     Write-Output 'Open http://127.0.0.1:5173 ; register a reader or author account in the browser.'

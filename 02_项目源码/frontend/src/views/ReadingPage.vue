@@ -1,19 +1,20 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { api, session } from '../session'
 import { guestIdentity } from '../discovery'
 import CommentSection from '../components/CommentSection.vue'
 import BookReadingActions from '../components/BookReadingActions.vue'
+import ReadingSettingsDialog from '../components/ReadingSettingsDialog.vue'
+import { useReadingPreferences } from '../composables/useReadingPreferences'
+import { readingWidths } from '../readingSettings'
 const route = useRoute(), chapter = ref(null), busy = ref(false), error = ref('')
 const paragraphElements = ref([]), index = ref(0), status = ref(''), progressError = ref(''), textChanged = ref(false)
-let settings = {}
-try { settings = JSON.parse(localStorage.getItem('mojian_reading_settings') || '{}') || {} } catch { /* 使用默认设置。 */ }
-const fontSize = ref([16,18,20,22,24,26,28].includes(settings.fontSize) ? settings.fontSize : 20)
-const theme = ref(['paper','green','dark'].includes(settings.theme) ? settings.theme : 'paper')
-watch([fontSize, theme], () => {
-  try { localStorage.setItem('mojian_reading_settings', JSON.stringify({ fontSize: fontSize.value, theme: theme.value })) } catch { /* 禁用存储时临时调整仍可用。 */ }
-})
+const { preferences } = useReadingPreferences()
+const settingsDialog = useTemplateRef('settingsDialog')
+const fontSize = computed(() => preferences.fontSize)
+const theme = computed(() => preferences.theme)
+const sheetStyle = computed(() => ({ '--reading-width': `${readingWidths[preferences.width]}px`, '--reading-line-height': preferences.lineHeight }))
 const paragraphs = computed(() => chapter.value?.content.replace(/\r\n?/g, '\n').split(/\n[ \t]*\n/).filter(p => p.trim()) || [])
 let requestId = 0, version = 0, lastSaved = -1, ready = false, blocked = false, timer = null, saving = null
 function measure() {
@@ -123,19 +124,21 @@ watch(() => [route.fullPath, session.user?.id], load, { immediate: true })
 </script>
 
 <template>
-  <section class="reading-page" :class="`theme-${theme}`" v-loading="busy">
+  <section class="reading-page" :class="`theme-${theme}`" :style="sheetStyle" v-loading="busy">
     <div class="reading-toolbar">
-      <router-link class="quiet-link" :to="chapter ? `/books/${chapter.novelId}` : '/'">← 返回目录</router-link>
-      <div><label for="reading-size">字号</label><select id="reading-size" v-model="fontSize"><option v-for="size in [16,18,20,22,24,26,28]" :key="size" :value="size">{{ size }} px</option></select><label for="reading-theme">背景</label><select id="reading-theme" v-model="theme"><option value="paper">浅色</option><option value="green">护眼</option><option value="dark">深色</option></select></div>
+      <router-link class="quiet-link" :to="chapter ? `/books/${chapter.novelId}` : '/library'">返回目录</router-link>
+      <span v-if="chapter" class="reading-location">第 {{ chapter.chapterNumber }} 章 · {{ chapter.title }}</span>
+      <button class="reading-settings-trigger" @click="settingsDialog.open()">Aa <span>阅读设置</span></button>
     </div>
+    <ReadingSettingsDialog ref="settingsDialog" />
     <el-alert v-if="error" :title="error" type="error" :closable="false" class="form-alert" /><el-button v-if="error" @click="load">重新加载</el-button>
     <article v-if="chapter" class="reading-sheet">
-      <p class="eyebrow">第 {{ chapter.chapterNumber }} 章</p><h1>{{ chapter.title }}</h1>
+      <p class="chapter-kicker">第 {{ chapter.chapterNumber }} 章</p><h1>{{ chapter.title }}</h1>
       <div class="reading-progress" aria-live="polite"><span>{{ status }}</span><span v-if="progressError" class="progress-error">{{ progressError }} <el-button v-if="session.user" text @click="retry">{{ textChanged ? '重新加载正文' : '保存当前位置' }}</el-button></span></div>
       <div class="chapter-body" :style="{ fontSize: `${fontSize}px` }"><p v-for="(paragraph, i) in paragraphs" :key="i" :ref="el => paragraphElements[i] = el" :data-paragraph="i">{{ paragraph }}</p></div>
       <nav class="reading-nav" aria-label="章节切换"><router-link v-if="chapter.previousChapterId" :to="`/read/${chapter.previousChapterId}`">← 上一章</router-link><span v-else>已是首章</span><router-link :to="`/books/${chapter.novelId}`">目录</router-link><router-link v-if="chapter.nextChapterId" :to="`/read/${chapter.nextChapterId}`">下一章 →</router-link><span v-else>已是最新章</span></nav>
       <BookReadingActions :novel-id="chapter.novelId" />
-      <p class="scope-note">字号和背景保存在当前浏览器。登录后自动保存章节与段落，书架中可继续阅读；网络中断或直接结束进程时，最后一次保存可能未完成。</p>
+      <p class="scope-note">阅读偏好在“阅读设置”中调整。登录后自动保存进度，下次可从书架继续阅读。</p>
       <CommentSection :novel-id="chapter.novelId" :chapter-id="chapter.id" />
     </article>
   </section>

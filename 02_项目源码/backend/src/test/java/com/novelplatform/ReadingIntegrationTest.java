@@ -28,6 +28,7 @@ class ReadingIntegrationTest {
     @Autowired UserMapper users;
     @Autowired TokenService tokens;
     @Autowired ReviewRecordMapper reviews;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
     String author,other,reader,admin;
     @BeforeEach void identities() {
         author=identity("author_one","AUTHOR");other=identity("author_two","AUTHOR");
@@ -57,6 +58,40 @@ class ReadingIntegrationTest {
     JsonNode publishChapter(JsonNode n) throws Exception { return approve("chapters",submit("chapters",n)); }
 
     String shelf(JsonNode n) { return "/api/me/bookshelf/"+id(n); }
+    @Test void shelfSearchUsesPublicTitleAndKeepsUsersIsolated() throws Exception {
+        var n=publishBook(book());call("PUT",shelf(n),reader,null,200);
+        call("PUT","/api/author/novels/"+id(n),author,novelInput("未审核的私有书名",v(n)),200);
+        assertThat(call("GET","/api/me/bookshelf?keyword=测试",reader,null,200).get("total").asInt()).isEqualTo(1);
+        assertThat(call("GET","/api/me/bookshelf?keyword=私有",reader,null,200).get("total").asInt()).isZero();
+        assertThat(call("GET","/api/me/bookshelf?keyword=_",reader,null,200).get("total").asInt()).isZero();
+        assertThat(call("GET","/api/me/bookshelf?keyword=测试",other,null,200).get("total").asInt()).isZero();
+        call("POST","/api/admin/novels/"+id(n)+"/takedown",admin,Map.of("version",v(n)+1,"reason","测试下架"),200);
+        var hidden=call("GET","/api/me/bookshelf?keyword=测试",reader,null,200).get("items").get(0);
+        assertThat(hidden.get("available").asBoolean()).isFalse();
+        assertThat(hidden.get("reading").get("resumeChapterId").isNull()).isTrue();
+    }
+    @Test void shelfReadFiltersAndSortingRunBeforePagination() throws Exception {
+        var a=publishBook(book());var ca=threeParagraphs(a);
+        var b=publishBook(book());var cb=threeParagraphs(b);
+        var c=publishBook(book());
+        for(var n:java.util.List.of(a,b,c)) call("PUT",shelf(n),reader,null,200);
+        call("PUT",progress(a),reader,position(ca,0,0),200);
+        call("PUT",progress(b),reader,position(cb,1,0),200);
+        jdbc.update("UPDATE reading_progress SET updated_at=? WHERE novel_id=?",java.sql.Timestamp.valueOf("2026-01-01 00:00:00"),id(a));
+        jdbc.update("UPDATE reading_progress SET updated_at=? WHERE novel_id=?",java.sql.Timestamp.valueOf("2026-01-02 00:00:00"),id(b));
+        var first=call("GET","/api/me/bookshelf?sort=RECENT_READ&size=1",reader,null,200);
+        assertThat(first.get("total").asInt()).isEqualTo(3);assertThat(first.get("items").get(0).get("novelId").asLong()).isEqualTo(id(b));
+        assertThat(call("GET","/api/me/bookshelf?sort=RECENT_READ&size=1&page=3",reader,null,200).get("items").get(0).get("novelId").asLong()).isEqualTo(id(c));
+        assertThat(call("GET","/api/me/bookshelf?status=READ",reader,null,200).get("total").asInt()).isEqualTo(2);
+        assertThat(call("GET","/api/me/bookshelf?status=UNREAD",reader,null,200).get("items").get(0).get("novelId").asLong()).isEqualTo(id(c));
+        call("DELETE",shelf(a),reader,null,204);call("PUT",shelf(a),reader,null,200);
+        assertThat(call("GET","/api/me/bookshelf?status=READ",reader,null,200).get("total").asInt()).isEqualTo(2);
+    }
+    @Test void shelfFiltersRejectInvalidInputAndGuests() throws Exception {
+        for(String q:java.util.List.of("status=FINISHED","sort=SQL","keyword="+"x".repeat(101),"size=51","page=0"))
+            call("GET","/api/me/bookshelf?"+q,reader,null,400);
+        call("GET","/api/me/bookshelf?status=READ&sort=RECENT_READ",null,null,401);
+    }
     String progress(JsonNode n) { return "/api/me/novels/"+id(n)+"/reading"; }
     Map<String,Object> position(JsonNode c,int index,long version) throws Exception {
         var publicChapter=call("GET","/api/public/chapters/"+id(c),null,null,200);

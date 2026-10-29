@@ -1,37 +1,42 @@
 <script setup>
+import { onBeforeUnmount, onMounted, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
+import { api, session } from '../session'
+import { authLocation } from '../navigation'
+import { libraryLocation } from '../libraryQuery'
 import DiscoveryBook from '../components/DiscoveryBook.vue'
 import DiscoveryShelves from '../components/DiscoveryShelves.vue'
-import { rankingKinds } from '../discovery'
-import { onMounted, ref } from 'vue'
-import { api, session } from '../session'
-import PageControls from '../components/PageControls.vue'
-const serialStatus = ref(''), sort = ref('NEWEST')
-const keyword = ref(''), categoryId = ref(''), categories = ref([]), busy = ref(false), error = ref('')
-const result = ref({ items: [], page: 1, size: 12, total: 0 })
-let requestId = 0
-async function load(page = 1) {
-  const current = ++requestId
+const router = useRouter(), keyword = shallowRef(''), categories = shallowRef([]), books = shallowRef([])
+const busy = shallowRef(false), error = shallowRef('')
+let controller
+function search() { router.push(libraryLocation({ keyword: keyword.value })) }
+async function load() {
+  controller?.abort(); controller = new AbortController()
+  const signal = controller.signal
   busy.value = true; error.value = ''
-  try {
-    const query = new URLSearchParams({ keyword: keyword.value, page: String(page), size: '12' })
-    if (categoryId.value) query.set('categoryId', categoryId.value)
-    if (serialStatus.value) query.set('serialStatus', serialStatus.value)
-    query.set('sort', sort.value)
-    const data = await api(`/public/novels?${query}`, { publicRequest: true })
-    if (current === requestId) result.value = data
-  } catch (e) { if (current === requestId) { error.value = e.message; result.value.items = [] } }
-  finally { if (current === requestId) busy.value = false }
+  await Promise.allSettled([
+    api('/public/categories', { publicRequest: true, signal }).then(data => { if (!signal.aborted) categories.value = data }),
+    api('/public/novels?size=6&sort=NEWEST', { publicRequest: true, signal }).then(data => { if (!signal.aborted) books.value = data.items }).catch(e => { if (!signal.aborted) error.value = e.message }),
+  ])
+  if (!signal.aborted) busy.value = false
 }
-onMounted(async () => {
-  try { categories.value = await api('/public/categories', { publicRequest: true }) } catch (e) { error.value = e.message; return }
-  await load()
-})
+onMounted(load)
+onBeforeUnmount(() => controller?.abort())
 </script>
 <template>
-  <section class="home-hero">
-    <div class="hero-copy"><p class="eyebrow">故事的下一页，等你开启</p><h1>在文字之间，<br>遇见新的世界。</h1><p class="hero-description">为热爱故事的读者，也为正在写下故事的你。<br>在墨间，开启属于自己的阅读与创作旅程。</p><div class="hero-actions"><a class="solid-link large" href="#library">探索书库 ↓</a><router-link class="quiet-link" :to="session.user?.role === 'AUTHOR' ? '/author' : '/register'">开始我的创作 →</router-link></div><p class="release-note">作品与章节通过审核后，即可在这里与读者相遇。</p></div>
-    <div class="book-scene" aria-hidden="true"><div class="scene-circle"></div><div class="book book-back"><span>故事<br>始于<br>一念</span></div><div class="book book-front"><span class="book-label">墨 间 · 创 作 手 记</span><strong>每一个故事<br>都有自己的<br>回响。</strong><div class="book-rule"></div><small>写下第一行，让想象生长。</small></div><span class="scene-caption">A PLACE FOR YOUR STORIES</span></div>
-  </section>
-  <DiscoveryShelves />
-  <section id="library" class="feature-section"><div class="section-heading"><div><p class="eyebrow">发现下一本好故事</p><h2>原创书库</h2></div><span class="outline-label">已审核作品</span></div><form class="library-search" @submit.prevent="load(1)"><div><label for="book-search">关键词</label><el-input id="book-search" v-model="keyword" :maxlength="100" placeholder="搜索书名或作者昵称" /></div><div><label for="book-category">题材</label><select id="book-category" v-model="categoryId"><option value="">全部题材</option><option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option></select></div><div><label for="book-serial">状态</label><select id="book-serial" v-model="serialStatus"><option value="">全部状态</option><option value="SERIALIZING">连载中</option><option value="COMPLETED">已完结</option></select></div><div><label for="book-sort">排序</label><select id="book-sort" v-model="sort"><option v-for="kind in rankingKinds" :key="kind.value" :value="kind.value">{{ kind.label }}</option></select></div><el-button type="primary" native-type="submit" :loading="busy">搜索作品</el-button></form><el-alert v-if="error" :title="error" type="error" :closable="false" class="form-alert" /><div class="library-grid" v-loading="busy"><DiscoveryBook v-for="book in result.items" :key="book.id" :book="book" /></div><div v-if="!busy && !error && !result.items.length" class="empty-state"><h3>{{ keyword || categoryId ? '没有找到匹配作品' : '书库正在等待新的故事' }}</h3><p>{{ keyword || categoryId ? '试试其他关键词或题材。' : '作者提交作品与章节，管理员审核通过后，读者即可开始阅读。' }}</p></div><PageControls v-bind="result" :busy="busy" @change="load" /></section>
+  <div class="home-page">
+    <section class="home-welcome">
+      <div class="welcome-main"><h1>今天，读点什么？</h1><p>发现喜欢的故事，也写下自己的下一章。</p>
+        <form class="home-search" role="search" @submit.prevent="search"><label class="sr-only" for="home-keyword">搜索书名或作者</label><input id="home-keyword" v-model="keyword" name="keyword" type="search" maxlength="100" autocomplete="off" placeholder="搜索书名或作者…" /><button type="submit" class="solid-link">搜索作品</button></form>
+        <nav class="category-shortcuts" aria-label="按题材找书"><router-link to="/library">全部题材</router-link><router-link v-for="category in categories" :key="category.id" :to="libraryLocation({ categoryId: category.id })">{{ category.name }}</router-link></nav>
+      </div>
+      <aside class="welcome-shortcuts"><strong>{{ session.user ? '故事，在等你继续' : '把喜欢的故事放进书架' }}</strong><p>{{ session.user ? '回到书架，从上次读到的地方接着读。' : '登录后收藏作品，自动保存阅读进度。' }}</p><router-link class="solid-link" :to="session.user ? '/bookshelf' : authLocation('/login','/bookshelf')">{{ session.user ? '打开我的书架' : '登录并开启书架' }}</router-link></aside>
+    </section>
+    <DiscoveryShelves />
+    <section class="feature-section home-latest"><div class="section-heading"><div><h2>新书上架</h2><p class="page-intro">从第一章开始，认识一个新世界。</p></div><router-link class="quiet-link" to="/library">查看全部作品</router-link></div>
+      <div v-if="error" class="library-error" role="alert"><span>{{ error }}</span><button class="text-button" @click="load">重新加载</button></div>
+      <div class="library-grid" v-loading="busy"><DiscoveryBook v-for="book in books" :key="book.id" :book="book" /></div>
+      <div v-if="!busy && !error && !books.length" class="empty-state">新故事正在准备中，稍后再来看看。</div>
+    </section>
+  </div>
 </template>

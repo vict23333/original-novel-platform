@@ -11,6 +11,9 @@ public class Chapter {
     private Integer chapterNumber;
     private String title;
     private String content;
+    @TableField(exist=false)
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private String goal;
     private Long version;
     private String reviewStatus;
     private String reviewReason;
@@ -32,6 +35,8 @@ public class Chapter {
     public String getTitle() { return title; }
     public void setTitle(String value) { title = value; }
     public String getContent() { return content; }
+    public String getGoal() { return goal; }
+    public void setGoal(String value) { goal=value; }
     public void setContent(String value) { content = value; }
     public Long getVersion() { return version; }
     public void setVersion(Long value) { version = value; }

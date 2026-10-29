@@ -22,11 +22,13 @@ public class ContentService {
     private final ReviewRecordMapper reviews;
     private final UserMapper users;
     private final ObjectMapper json;
+    private final com.novelplatform.writing.WritingNoteMapper writingNotes;
 
     public ContentService(NovelMapper novels, ChapterMapper chapters, CategoryMapper categories,
-                          ReviewRecordMapper reviews, UserMapper users, ObjectMapper json) {
+                          ReviewRecordMapper reviews, UserMapper users, ObjectMapper json, com.novelplatform.writing.WritingNoteMapper writingNotes) {
         this.novels=novels; this.chapters=chapters; this.categories=categories;
         this.reviews=reviews; this.users=users; this.json=json;
+        this.writingNotes=writingNotes;
     }
     private BusinessException missing() { return new BusinessException(NOT_FOUND,"NOT_FOUND","内容不存在或当前不可访问"); }
     private BusinessException conflict(String message) { return new BusinessException(CONFLICT,"CONTENT_CONFLICT",message); }
@@ -101,7 +103,12 @@ public class ContentService {
                 .orderByAsc(Chapter::getChapterNumber).last(pagination)).stream().map(ChapterDraft::from).toList();
         return new Page<>(items,page,size,total);
     }
-    public Chapter authorChapter(long owner,long id) { Chapter c=chapter(id);authorNovel(owner,c.getNovelId());return c; }
+    public Chapter authorChapter(long owner,long id) { Chapter c=chapter(id);authorNovel(owner,c.getNovelId());c.setGoal(java.util.Objects.requireNonNullElse(writingNotes.goal(id),""));return c; }
+    private void saveGoal(Chapter chapter,String goal) {
+        if(goal==null)return;
+        if(writingNotes.goal(chapter.getId())==null)writingNotes.insert(chapter.getId(),goal);else writingNotes.update(chapter.getId(),goal);
+        chapter.setGoal(goal);
+    }
     public java.util.Map<String,Integer> nextChapterNumber(long owner,long novelId) {
         authorNovel(owner,novelId);
         int maximum=chapters.maximumNumber(novelId);
@@ -116,12 +123,12 @@ public class ContentService {
         owns(lockNovel(novelId),owner);if(i.version()!=0) throw conflict("新章节版本应为 0");availableNumber(novelId,i.chapterNumber(),null);
         Chapter c=new Chapter();c.setNovelId(novelId);c.setTitle(i.title().strip());c.setContent(i.content());c.setChapterNumber(i.chapterNumber());
         c.setVersion(0L);c.setReviewStatus("DRAFT");c.setReviewReason("");c.setPublished(false);c.setTakenDown(false);c.setDeleted(false);
-        c.setCreatedAt(now());c.setUpdatedAt(now());chapters.insert(c);return c;
+        c.setCreatedAt(now());c.setUpdatedAt(now());chapters.insert(c);saveGoal(c,i.goal());return c;
     }
     @Transactional public Chapter updateChapter(long owner,long id,ContentRequests.ChapterInput i) {
         Chapter c=lockChapter(id,owner);version(c.getVersion(),i.version());editable(c.getReviewStatus());availableNumber(c.getNovelId(),i.chapterNumber(),id);
         c.setTitle(i.title().strip());c.setContent(i.content());c.setChapterNumber(i.chapterNumber());
-        c.setVersion(c.getVersion()+1);c.setReviewStatus("DRAFT");c.setUpdatedAt(now());chapters.updateById(c);return c;
+        c.setVersion(c.getVersion()+1);c.setReviewStatus("DRAFT");c.setUpdatedAt(now());chapters.updateById(c);saveGoal(c,i.goal());return c;
     }
     @Transactional public Chapter submitChapter(long owner,long id,long expected) {
         Chapter c=lockChapter(id,owner);version(c.getVersion(),expected);editable(c.getReviewStatus());

@@ -41,14 +41,18 @@ public class ReadingService {
         data.lockUser(userId);
         data.remove(userId, novelId); // 幂等移除；阅读记录独立保存。
     }
-    public ContentViews.Page<ShelfItem> shelf(long userId, int page, int size) {
+    @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public ContentViews.Page<ShelfItem> shelf(long userId, int page, int size,String keyword,String status,String sort) {
         if (page < 1 || page > 100000 || size < 1 || size > 50)
             throw new BusinessException(BAD_REQUEST,"INVALID_PAGE","页码或每页数量超出范围");
-        List<ShelfItem> items = data.shelf(userId,size,(long)(page-1)*size).stream().map(row -> {
+        if(keyword.length()>100 || !List.of("ALL","READ","UNREAD").contains(status) || !List.of("ADDED","RECENT_READ").contains(sort))
+            throw new BusinessException(BAD_REQUEST,"INVALID_FILTER","书架筛选条件不正确");
+        String search=keyword.strip();
+        List<ShelfItem> items = data.shelf(userId,search,status,sort,size,(long)(page-1)*size).stream().map(row -> {
             Novel n = novels.selectById(row.novelId());
             return new ShelfItem(n.getId(),n.getPublicTitle(),visible(n),row.addedAt(),resolve(userId,n));
         }).toList();
-        return new ContentViews.Page<>(items,page,size,data.count(userId));
+        return new ContentViews.Page<>(items,page,size,data.count(userId,search,status));
     }
     public State state(long userId, long novelId) {
         Novel n = novels.selectById(novelId);
